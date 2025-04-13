@@ -14,9 +14,19 @@ if (!session_id()) {
     session_start();
 }
 
+// Register Shortcode.
 add_shortcode('oauth_connect', 'Constant_Contact_Oauth_Connect');
+
+// Remove header and footer for the OAuth page.
 add_action('template_redirect', 'Load_Blank_Template_For_Oauth_page');
 
+/**
+ * Loads a blank template for the OAuth page.
+ *
+ * This function checks if the current page is the OAuth page and, if so,
+ * applies a filter to load a blank template, removing the header and footer.
+ *
+ */
 function Load_Blank_Template_For_Oauth_page() {
     if (is_page('oauth-connect2')) {
         add_filter('template_include', function($template) {
@@ -25,30 +35,38 @@ function Load_Blank_Template_For_Oauth_page() {
     }
 }
 
+/**
+ * Handles the OAuth connection process for Constant Contact.
+ *
+ * This function renders a form for entering Constant Contact credentials,
+ * processes the form submission, and handles the OAuth flow, including
+ * generating access tokens and displaying them.
+ * 
+ */
 function Constant_Contact_Oauth_Connect() {
-    ob_start();
-
-    $client_id = get_option('cc_client_id');
-    $client_secret = get_option('cc_client_secret');
-    $access_token = get_option('cc_access_token');
-    $refresh_token = get_option('cc_refresh_token');
-    $code = isset($_GET['code']) ? sanitize_text_field($_GET['code']) : null;
-
+    // Handle redirect BEFORE output
     if (isset($_POST['connect'])) {
-        $client_id = sanitize_text_field($_POST['client_id']);
-        $client_secret = sanitize_text_field($_POST['client_secret']);
-        update_option('cc_client_id', $client_id);
-        update_option('cc_client_secret', $client_secret);
-        $state = bin2hex(random_bytes(16));
-        $_SESSION['oauth_state'] = $state;
+        $_SESSION['cc_client_id'] = sanitize_text_field($_POST['client_id']);
+        $_SESSION['cc_client_secret'] = sanitize_text_field($_POST['client_secret']);
+        $_SESSION['oauth_state'] = bin2hex(random_bytes(16));
 
         $redirect_uri = home_url('/oauth-connect2/');
         $scope = rawurlencode("contact_data campaign_data offline_access");
-        $auth_url = "https://authz.constantcontact.com/oauth2/default/v1/authorize?client_id={$client_id}&redirect_uri={$redirect_uri}&response_type=code&scope={$scope}&state={$state}";
 
+        $auth_url = "https://authz.constantcontact.com/oauth2/default/v1/authorize?client_id={$_SESSION['cc_client_id']}&redirect_uri={$redirect_uri}&response_type=code&scope={$scope}&state={$_SESSION['oauth_state']}";
+
+        if (ob_get_length()) ob_end_clean();
         wp_redirect($auth_url);
         exit;
     }
+
+    ob_start();
+
+    $client_id     = $_SESSION['cc_client_id'] ?? null;
+    $client_secret = $_SESSION['cc_client_secret'] ?? null;
+    $access_token  = $_SESSION['cc_access_token'] ?? null;
+    $refresh_token = $_SESSION['cc_refresh_token'] ?? null;
+    $code = isset($_GET['code']) ? sanitize_text_field($_GET['code']) : null;
 
     $show_token_section = false;
     $error_message = '';
@@ -56,9 +74,9 @@ function Constant_Contact_Oauth_Connect() {
     if ($code && empty($_SESSION['token_displayed'])) {
         $access_token_data = getAccessToken($code, $client_id, $client_secret, home_url('/oauth-connect2/'));
         if ($access_token_data && isset($access_token_data['access_token'])) {
-            update_option('cc_access_token', $access_token_data['access_token']);
-            update_option('cc_refresh_token', $access_token_data['refresh_token']);
-            update_option('cc_token_expiry', time() + $access_token_data['expires_in']);
+            $_SESSION['cc_access_token'] = $access_token_data['access_token'];
+            $_SESSION['cc_refresh_token'] = $access_token_data['refresh_token'];
+            $_SESSION['cc_token_expiry'] = time() + $access_token_data['expires_in'];
             $_SESSION['token_displayed'] = true;
             $show_token_section = true;
         } else {
@@ -69,15 +87,8 @@ function Constant_Contact_Oauth_Connect() {
         $_SESSION['token_displayed'] = null;
     }
 
-    if (isset($_POST['revoke_access'])) {
-        revokeAuthorization();
-        $access_token = $refresh_token = null;
-        $_SESSION['token_displayed'] = null;
-    }
-
     if (isset($_POST['go_back'])) {
         $_SESSION['token_displayed'] = null;
-        $show_token_section = false;
     }
 
     echo '<div class="cppro-cc-main-block"><div class="cppro-cc-container">';
@@ -86,13 +97,12 @@ function Constant_Contact_Oauth_Connect() {
         echo '<div class="cppro-cc-notice cppro-cc-error-msg">' . esc_html($error_message) . '</div>';
     }
 
-    if ($show_token_section) {
+    if (!empty($_SESSION['token_displayed'])) {
         echo '<form method="POST"><button class="cppro-cc-revoke_acces_btn" type="submit" name="go_back">Enter Client Credentials</button></form>';
         echo '<div class="token-output">';
         echo '<h3>Access Token</h3><pre class="ccpro-cc-token-box">' . esc_html($access_token ?: 'Not Found') . '</pre>';
         echo '<h3>Refresh Token</h3><pre class="ccpro-cc-token-box">' . esc_html($refresh_token ?: 'Not Found') . '</pre>';
         echo '</div>';
-        // echo '<form method="POST"><button class="cppro-cc-revoke_acces_btn" type="submit" name="revoke_access">Revoke Access</button></form>';
     } else {
         echo '<div class="cppro-cc-prerequisite-box">';
         echo '<h2 class="cppro-cc-header">🔧 Before You Start</h2>';
@@ -114,11 +124,21 @@ function Constant_Contact_Oauth_Connect() {
         echo '<button type="submit" name="connect" class="cppro-cc-connect-btn">Connect to Constant Contact</button>';
         echo '</form>';
     }
+
     echo '</div></div>';
 
     return ob_get_clean();
 }
 
+/**
+ * Function to Exchange Authorization Code for Access Token.
+ *
+ * @param string $code The authorization code received from the OAuth server.
+ * @param string $client_id The client ID of the Constant Contact application.
+ * @param string $client_secret The client secret of the Constant Contact application.
+ * @param string $redirect_uri The redirect URI registered with the Constant Contact application.
+ * @return array|null The access token data or null if the request fails.
+ */
 function getAccessToken($code, $client_id, $client_secret, $redirect_uri) {
     $url = "https://authz.constantcontact.com/oauth2/default/v1/token";
     $data = ["code" => $code, "redirect_uri" => $redirect_uri, "grant_type" => "authorization_code"];
@@ -138,42 +158,4 @@ function getAccessToken($code, $client_id, $client_secret, $redirect_uri) {
     curl_close($ch);
 
     return json_decode($response, true);
-}
-
-function refreshAccessToken($client_id, $client_secret) {
-    $refresh_token = get_option('cc_refresh_token');
-    if (!$refresh_token) return "Error: No refresh token available.";
-
-    $url = "https://authz.constantcontact.com/oauth2/default/v1/token";
-    $data = ["refresh_token" => $refresh_token, "grant_type" => "refresh_token"];
-    $auth = base64_encode("$client_id:$client_secret");
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Basic $auth",
-        "Content-Type: application/x-www-form-urlencoded",
-        "Accept: application/json"
-    ]);
-
-    $response = curl_exec($ch);
-    curl_close($ch);
-
-    $tokens = json_decode($response, true);
-    if (isset($tokens['access_token'])) {
-        update_option('cc_access_token', $tokens['access_token']);
-        update_option('cc_refresh_token', $tokens['refresh_token']);
-        update_option('cc_token_expiry', time() + $tokens['expires_in']);
-        return $tokens['access_token'];
-    }
-
-    return "Error: Failed to refresh token.";
-}
-
-function revokeAuthorization() {
-    delete_option('cc_access_token');
-    delete_option('cc_refresh_token');
-    delete_option('cc_token_expiry');
 }

@@ -148,7 +148,7 @@ if (!defined('ABSPATH')) {
     <main class="oauth-page-wrapper">
         <?php
         while (have_posts()) : the_post();
-            the_content(); // This will display your HTML form
+            the_content(); // This will display your HTML form.
         endwhile;
         ?>
     </main>
