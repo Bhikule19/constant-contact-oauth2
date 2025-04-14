@@ -47,7 +47,7 @@ function Constant_Contact_Oauth_Connect() {
     // Handle redirect BEFORE output
     if (isset($_POST['connect'])) {
         $_SESSION['cc_client_id'] = sanitize_text_field($_POST['client_id']);
-        $_SESSION['cc_client_secret'] = sanitize_text_field($_POST['client_secret']);
+        $_SESSION['cc_client_secret'] = base64_encode(sanitize_text_field($_POST['client_secret']));
         $_SESSION['oauth_state'] = bin2hex(random_bytes(16));
 
         $redirect_uri = home_url('/oauth-connect2/');
@@ -63,12 +63,11 @@ function Constant_Contact_Oauth_Connect() {
     ob_start();
 
     $client_id     = $_SESSION['cc_client_id'] ?? null;
-    $client_secret = $_SESSION['cc_client_secret'] ?? null;
+    $client_secret = isset($_SESSION['cc_client_secret']) ? base64_decode($_SESSION['cc_client_secret']) : null;
     $access_token  = $_SESSION['cc_access_token'] ?? null;
     $refresh_token = $_SESSION['cc_refresh_token'] ?? null;
     $code = isset($_GET['code']) ? sanitize_text_field($_GET['code']) : null;
 
-    $show_token_section = false;
     $error_message = '';
 
     if ($code && empty($_SESSION['token_displayed'])) {
@@ -78,7 +77,6 @@ function Constant_Contact_Oauth_Connect() {
             $_SESSION['cc_refresh_token'] = $access_token_data['refresh_token'];
             $_SESSION['cc_token_expiry'] = time() + $access_token_data['expires_in'];
             $_SESSION['token_displayed'] = true;
-            $show_token_section = true;
         } else {
             $error_message = 'The authorization code is invalid or has expired. Please enter valid credentials.';
         }
