@@ -96,13 +96,6 @@ function Constant_Contact_Oauth_Connect() {
         $_SESSION['token_displayed'] = null;
     }
 
-    // Handle token revocation request.
-    if (isset($_POST['revoke_access'])) {
-        revokeAuthorization();
-        $access_token = $refresh_token = null;
-        $_SESSION['token_displayed'] = null;
-    }
-
     // Handle return to credentials form.
     if (isset($_POST['go_back'])) {
         $_SESSION['token_displayed'] = null;
@@ -117,11 +110,13 @@ function Constant_Contact_Oauth_Connect() {
 
     // Display token information if available.
     if (!empty($_SESSION['token_displayed'])) {
+        // Display the access and refresh tokens.
+        $access_token = $_SESSION['cc_access_token'] ?? null;
+        $refresh_token = $_SESSION['cc_refresh_token'] ?? null;
         $output = '<form method="POST"><button class="cppro-cc-revoke_acces_btn" type="submit" name="go_back">Enter Client Credentials</button></form>';
         $output .= '<div class="token-output">';
         $output .= '<h3>Access Token</h3><pre class="ccpro-cc-token-box">' . esc_html($access_token ?: 'Not Found') . '</pre>';
         $output .= '<h3>Refresh Token</h3><pre class="ccpro-cc-token-box">' . esc_html($refresh_token ?: 'Not Found') . '</pre>';
-        $output .= '<form method="POST"><button class="cppro-cc-revoke_acces_btn" type="submit" name="revoke_access">Revoke Access</button></form>';
         $output .= '</div>';
         
         echo $output;
@@ -133,7 +128,7 @@ function Constant_Contact_Oauth_Connect() {
         $output .= '<ol>';
         $output .= '<li>Go to the <a href="https://developer.constantcontact.com/" target="_blank">Constant Contact App Portal</a>.</li>';
         $output .= '<li>Create a new application and copy the Client ID and Secret.</li>';
-        $output .= '<li>Set the Redirect URI to: <code>' . home_url('/oauth-connect2/') . '</code></li>';
+        $output .= '<li>Set the Redirect URI to: <code>' . esc_url(home_url('/oauth-connect2/')) . '</code></li>';
         $output .= '</ol>';
         $output .= '<p>Enter your credentials below.</p>';
         $output .= '</div>';
@@ -151,7 +146,19 @@ function Constant_Contact_Oauth_Connect() {
     }
 
     echo '</div></div>';
-    return ob_get_clean();
+
+    $content = ob_get_clean(); // store output.
+    if (!empty($_SESSION['token_displayed'])) {
+        // Clear session variables after displaying the tokens.
+        unset($_SESSION['cc_access_token']);
+        unset($_SESSION['cc_refresh_token']);
+        unset($_SESSION['cc_client_id']);
+        unset($_SESSION['cc_client_secret']);
+        unset($_SESSION['cc_token_expiry']);
+        unset($_SESSION['token_displayed']);
+    }
+    
+    return $content; // finally return cleaned output.
 }
 
 /**
@@ -183,23 +190,4 @@ function getAccessToken($code, $client_id, $client_secret, $redirect_uri) {
     curl_close($ch);
 
     return json_decode($response, true);
-}
-
-/**
- * Revokes authorization by clearing all session data related to Constant Contact.
- *
- * This function removes all OAuth-related data from the session,
- * effectively revoking access to the Constant Contact API.
- */
-function revokeAuthorization() {
-    unset($_SESSION['cc_access_token']);
-    unset($_SESSION['cc_refresh_token']);
-    unset($_SESSION['cc_client_id']);
-    unset($_SESSION['cc_client_secret']);
-    unset($_SESSION['token_displayed']);
-}
-
-// Handle Form Submission for Revoking Access
-if (isset($_POST['revoke_access'])) {
-    revokeAuthorization();
 }
