@@ -8,30 +8,26 @@ if (!defined('ABSPATH')) {
 }
 
 ?><!DOCTYPE html>
-<html >
+<html>
 <head>
     <meta charset="<?php bloginfo('charset'); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body {
-            margin: 0;
-            padding: 50px;
-            font-family: 'Catamaran', sans-serif;
-            font-size: medium;
-            background: #f5f7fa;
-            /* height: 100vh; */
+        .cppro-cc-main-block {
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 50px;
         }
 
-        .container {
+        .cppro-cc-container {
+            margin: 0;
             padding: 30px;
             width: 100%;
             max-width: 600px;
         }
 
-        .prerequisite-box {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-prerequisite-box {
             background-color: #f9f9ff;
             border-left: 5px solid #7252df;
             padding: 20px;
@@ -42,20 +38,20 @@ if (!defined('ABSPATH')) {
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
         }
 
-        .prerequisite-box h2 {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-prerequisite-box h2 {
             color: #333;
             margin-bottom: 12px;
         }
 
-        .prerequisite-box ol {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-prerequisite-box ol {
             padding-left: 20px;
         }
 
-        .prerequisite-box li {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-prerequisite-box li {
             margin-bottom: 10px;
         }
 
-        .prerequisite-box code {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-prerequisite-box code {
             background: #eee;
             padding: 2px 5px;
             border-radius: 4px;
@@ -63,13 +59,13 @@ if (!defined('ABSPATH')) {
         }
 
 
-        h2 {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-header {
             margin-top: 0;
             margin-bottom: 20px;
             color: #333;
         }
 
-        .btn {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-connect-btn {
             background-color: #7252df;
             color: white;
             padding: 12px 20px;
@@ -81,21 +77,21 @@ if (!defined('ABSPATH')) {
             margin-top: 10px;
         }
 
-        .btn:hover {
+        .cppro-cc-main-block .cppro-cc-container .cppro-cc-connect-btn:hover {
             background-color: #5c3ddf;
         }
-        .form-group {
+        .cppro-cc-main-block .cppro-cc-container .form-group {
             margin-bottom: 20px;
             text-align: left;
         }
 
-        label {
+        .cppro-cc-container .form-group label {
             display: block;
             margin-bottom: 6px;
             font-weight: 500;
         }
 
-        input[type="text"] {
+        .cppro-cc-main-block .cppro-cc-container input[type="text"] {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
@@ -103,48 +99,35 @@ if (!defined('ABSPATH')) {
             font-size: 14px;
         }
 
-        pre {
-        display: block;
-        padding: 9.5px;
-        margin: 0 0 10px;
-        font-size: 13px;
-        line-height: 1.42857143;
-        color: #333;
-        word-break: break-all;
-        word-wrap: break-word;
-        background-color: #f5f5f5;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        white-space: break-spaces;
-        max-width: 100%;
-        overflow: auto;
-        }
-
-        .copy-btn {
-        background: #7252df;
-        color: white;
-        border: none;
-        padding: 6px 10px;
-        font-size: 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        }
-
-        .revoke_acces_btn{
-            background: #ff4d4d;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            font-size: 12px;
+        .ccpro-cc-token-box {
+            display: block;
+            padding: 9.5px;
+            margin: 0 0 10px;
+            font-size: 13px;
+            line-height: 1.42857143;
+            color: #333;
+            word-break: break-all;
+            word-wrap: break-word;
+            background-color: #f5f5f5;
+            border: 1px solid #ccc;
             border-radius: 4px;
-            cursor: pointer;
-            margin-left: 30px;
+            white-space: break-spaces;
+            max-width: 100%;
+            overflow: auto;
         }
 
-        .notice {
+        .cppro-cc-revoke_acces_btn{
+            background-color: #7252df;
+            color: #fff;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .cppro-cc-notice {
             padding: 15px 20px;
-            margin: 0px 0px 30px 30px;
-            /* margin-left: 30px; */
             max-width: 600px;
             font-family: Catamaran, sans-serif;
             font-size: 16px;
@@ -153,13 +136,7 @@ if (!defined('ABSPATH')) {
             text-align: center;
         }
 
-        .success-msg {
-            background-color: #e6f7e9;
-            color: #2e7d32;
-            border: 5px solid #4caf50;
-        }
-
-        .error-msg {
+        .cppro-cc-error-msg {
             background-color: #fdecea;
             color: #c62828;
             border: 5px solid #f44336;
@@ -167,11 +144,11 @@ if (!defined('ABSPATH')) {
 
     </style>
 </head>
-<body <?php body_class(); ?>>
+<body>
     <main class="oauth-page-wrapper">
         <?php
         while (have_posts()) : the_post();
-            the_content(); // This will display your HTML form
+            the_content(); // This will display your HTML form.
         endwhile;
         ?>
     </main>
